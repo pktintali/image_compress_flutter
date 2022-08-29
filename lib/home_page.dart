@@ -13,26 +13,30 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final ImagePicker _picker = ImagePicker();
-  File? _imageFile;
-  File? _compressedFile;
+  final List<File?> _imageFiles = [];
+  final List<File?> _compressedFiles = [];
 
   Future<void> compress() async {
-    var result = await FlutterImageCompress.compressAndGetFile(
-      _imageFile!.absolute.path,
-      _imageFile!.path + 'compressed.jpg',
-      quality: 66,
-    );
-    setState(() {
-      _compressedFile = result;
-    });
+    for (var imageFile in _imageFiles) {
+      var result = await FlutterImageCompress.compressAndGetFile(
+        imageFile!.absolute.path,
+        imageFile.path + 'compressed.jpg',
+        quality: 50,
+      );
+      _compressedFiles.add(result);
+    }
+    setState(() {});
   }
 
   Future<void> pickImage() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    _imageFiles.clear();
+    _compressedFiles.clear();
+    final List<XFile>? images = await _picker.pickMultiImage();
 
-    setState(() {
-      _imageFile = File(image!.path);
-    });
+    for (int i = 0; i < images!.length; i++) {
+      _imageFiles.add(File(images[i].path));
+    }
+    setState(() {});
   }
 
   @override
@@ -45,24 +49,45 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('Before'),
-            if (_imageFile != null)
-              Image.file(
-                _imageFile!,
-                height: 200,
-                width: 200,
+            if (_imageFiles.isNotEmpty)
+              SizedBox(
+                height: 550,
+                child: ListView.builder(
+                    itemCount: _imageFiles.length,
+                    scrollDirection: Axis.horizontal,
+                    itemBuilder: (c, i) {
+                      return Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Column(
+                          children: [
+                            const Text('Before'),
+                            Image.file(
+                              _imageFiles[i]!,
+                              height: 200,
+                              width: 200,
+                            ),
+                            Text(
+                                '${(_imageFiles[i]!.lengthSync() / 1024).round()} kb'),
+                            const Divider(),
+                            if (_compressedFiles.isNotEmpty)
+                              Column(
+                                children: [
+                                  const Text('After'),
+                                  Image.file(
+                                    _compressedFiles[i]!,
+                                    height: 200,
+                                    width: 200,
+                                  ),
+                                  Text(
+                                      '${(_compressedFiles[i]!.lengthSync() / 1024).round()} kb'),
+                                  const Divider(),
+                                ],
+                              )
+                          ],
+                        ),
+                      );
+                    }),
               ),
-            if (_imageFile != null) Text('${_imageFile!.lengthSync()} bytes'),
-            const Divider(),
-            const Text('After'),
-            if (_compressedFile != null)
-              Image.file(
-                _compressedFile!,
-                height: 200,
-                width: 200,
-              ),
-            if (_compressedFile != null)
-              Text('${_compressedFile!.lengthSync()} bytes'),
             const Divider(),
             ElevatedButton(
               onPressed: () async {
